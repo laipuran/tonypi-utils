@@ -1,3 +1,5 @@
+import { defaultServoNames } from "../../types";
+
 type Props = {
   values: number[];
   selected: number;
@@ -35,7 +37,7 @@ export function JointDiagram({ values, selected, onSelect }: Props) {
         </svg>
       </div>
       <div className="joint-readout">
-        <span>Servo {selected}</span>
+        <span>{defaultServoNames[selected - 1] ?? `舵机 ${selected}`}</span>
         <strong>{values[selected - 1] ?? 500}</strong>
         <span className="unit">pulse</span>
       </div>
