@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, configureAgent, getAgentSettings, type AgentSettings } from "./api";
 import { ActionList } from "./features/actions/ActionList";
 import { GroupPanel } from "./features/groups/GroupPanel";
-import { JointDiagram } from "./features/joints/JointDiagram";
 import { ServoPanel } from "./features/servo/ServoPanel";
 import { blankAction, HEAD_SERVO_DEFAULTS, SERVO_COUNT, type Action, type ActionGroupDocument, type AgentStatus, type GroupMeta } from "./types";
 import { Toolbar } from "./components/Toolbar";
@@ -343,7 +342,6 @@ export default function App() {
         <aside className="left-column">
           <HeadPanel values={headValues} connected={isConnected} onChange={changeHeadServo} onRead={readHeadPose} onCenter={centerHead} />
           <ServoPanel values={actionValues} selected={selectedServo} connected={isConnected} onSelect={setSelectedServo} onChange={changeServo} onReadPose={readPose} onCenter={center} onStop={() => api.stopHardware().catch(() => undefined)} onReleaseTorque={releaseTorque} />
-          <JointDiagram values={actionValues} selected={selectedServo} onSelect={setSelectedServo} />
         </aside>
         <section className="center-column">
           <ActionList actions={document.actions} selected={selectedAction} onSelect={selectAction} onAdd={addAction} onUpdate={updateAction} onInsert={insertAction} onDelete={deleteAction} onMove={moveAction} onCellChange={changeActionCell} />

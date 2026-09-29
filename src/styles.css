@@ -65,21 +65,6 @@ input[type="range"] { accent-color: #d8ff51; width: 100%; }
 .head-label small { color: #687a89; font-size: 9px; white-space: nowrap; }
 .head-note { margin: 3px 14px 0; color: #687a89; font-size: 10px; }
 
-.joint-card { padding-bottom: 12px; }
-.joint-diagram { display: flex; justify-content: center; padding: 0 18px; }
-.joint-diagram svg { width: 100%; max-height: 350px; }
-.robot-outline { fill: #1a2832; stroke: #476173; stroke-width: 3; }
-.robot-head { fill: #253a48; stroke: #688498; stroke-width: 2; }
-.robot-line { fill: none; stroke: #476173; stroke-width: 8; stroke-linecap: round; }
-.joint-node { cursor: pointer; }
-.joint-node circle { fill: #16212b; stroke: #6b8292; stroke-width: 2; transition: .15s; }
-.joint-node:hover circle, .joint-node.selected circle { fill: #d8ff51; stroke: #f0ffc0; }
-.joint-node text { fill: #dbe8ef; font-size: 10px; font-weight: 800; pointer-events: none; }
-.joint-node.selected text { fill: #15200c; }
-.joint-readout { margin: 0 18px; padding: 10px 12px; border-radius: 6px; background: #0b1117; display: flex; align-items: baseline; gap: 7px; color: #90a0b0; font-size: 11px; }
-.joint-readout strong { margin-left: auto; color: #e6f5c0; font: 700 17px ui-monospace, monospace; }
-.unit { color: #607182; }
-
 .action-card { min-height: 650px; display: flex; flex-direction: column; }
 .action-toolbar { display: flex; align-items: center; gap: 6px; padding: 0 16px 13px; }
 .icon-button { width: 29px; height: 29px; padding: 0; }
