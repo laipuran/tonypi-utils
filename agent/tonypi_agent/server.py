@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import socketserver
-import threading
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from .action_groups import ActionGroupError, ActionGroupRepository, DEFAULT_SERVO_COUNT
+from .action_groups import ActionGroupRepository, DEFAULT_SERVO_COUNT
 from .hardware import HardwareError, MockHardware, SerialHardware
 from .playback import PlaybackController
 
@@ -86,29 +86,60 @@ class Agent:
         raise AgentError(f"未知方法：{method}")
 
 
-class RequestHandler(socketserver.StreamRequestHandler):
-    def handle(self) -> None:
-        agent: Agent = self.server.agent  # type: ignore[attr-defined]
-        for raw_line in self.rfile:
-            if not raw_line.strip():
-                continue
-            request: dict[str, Any] = {}
-            try:
-                request = json.loads(raw_line.decode("utf-8"))
-                if agent.token and request.get("token") != agent.token:
-                    raise AgentError("访问令牌错误")
-                result = agent.dispatch(request["method"], request.get("params", {}))
-                response = {"id": request.get("id"), "ok": True, "result": result}
-            except Exception as exc:
-                response = {"id": request.get("id"), "ok": False, "error": str(exc)}
-            self.wfile.write((json.dumps(response, ensure_ascii=False) + "\n").encode("utf-8"))
-            self.wfile.flush()
+class AgentRequestHandler(BaseHTTPRequestHandler):
+    """Small HTTP adapter exposing the deep Agent interface to browser clients."""
+
+    server_version = "TonyPiAgent/1.0"
+
+    def _agent(self) -> Agent:
+        return self.server.agent  # type: ignore[attr-defined]
+
+    def _cors_origin(self) -> str:
+        return self.server.cors_origin  # type: ignore[attr-defined]
+
+    def _write_json(self, response: dict[str, Any], status: int = HTTPStatus.OK) -> None:
+        payload = json.dumps(response, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Access-Control-Allow-Origin", self._cors_origin())
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        self._write_json({"ok": True})
+
+    def do_GET(self) -> None:  # noqa: N802
+        if self.path != "/api/health":
+            self._write_json({"ok": False, "error": "找不到请求路径"}, HTTPStatus.NOT_FOUND)
+            return
+        self._write_json({"ok": True, "result": self._agent().dispatch("ping", {})})
+
+    def do_POST(self) -> None:  # noqa: N802
+        if self.path != "/api/call":
+            self._write_json({"ok": False, "error": "找不到请求路径"}, HTTPStatus.NOT_FOUND)
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            request = json.loads(self.rfile.read(length).decode("utf-8"))
+            if self._agent().token and request.get("token") != self._agent().token:
+                raise AgentError("访问令牌错误")
+            result = self._agent().dispatch(request["method"], request.get("params", {}))
+            self._write_json({"ok": True, "result": result})
+        except Exception as exc:
+            self._write_json({"ok": False, "error": str(exc)})
+
+    def log_message(self, _format: str, *_args: Any) -> None:
+        return
 
 
-class AgentServer(socketserver.ThreadingTCPServer):
+class AgentHttpServer(ThreadingHTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-    def __init__(self, address, agent: Agent):
+    def __init__(self, address, agent: Agent, cors_origin: str = "http://127.0.0.1:1420"):
         self.agent = agent
-        super().__init__(address, RequestHandler)
+        self.cors_origin = cors_origin
+        super().__init__(address, AgentRequestHandler)

@@ -7,9 +7,6 @@ __pycache__/
 node_modules/
 dist/
 
-# Rust/Tauri build output
-src-tauri/target/
-
 # Local environment and secrets
 .env
 .env.*

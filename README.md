@@ -1,6 +1,6 @@
 # TonyPi 动作组编辑器
 
-这是一个基于 Tauri + React 的 TonyPi 动作组编辑器。Tauri 是桌面客户端，`agent/` 是运行在开发机或机器人上的无界面 Python Agent。
+这是一个基于 React 和 Python Agent 的 TonyPi 动作组编辑器。React 负责浏览器界面，`agent/` 是运行在开发机或机器人上的无界面 Python Agent。
 
 ## 当前状态
 
@@ -10,7 +10,7 @@
 - 支持 SVG 舵机/关节示意图
 - 支持 Mock 硬件实时滑块调节
 - 已接入 HiwonderSDK 的真实串口适配器（尚未连接机器人验证）
-- Tauri Rust 客户端通过 JSON Lines TCP 连接 Agent
+- 浏览器通过 HTTP JSON 接口连接 Agent
 
 ## 开发机离线运行
 
@@ -20,25 +20,17 @@
 python3 agent/main.py --root ../TonyPi --hardware mock
 ```
 
-终端二：启动 Tauri 开发窗口：
-
-```bash
-npm run tauri dev
-```
-
-打开后点击顶部“刷新”，然后点击“模拟”连接 Mock 硬件。动作组默认来自：
-
-```text
-../TonyPi/ActionGroups
-```
-
-也可以只启动网页开发服务器查看界面：
+终端二：启动 React 开发服务器：
 
 ```bash
 npm run dev
 ```
 
-但网页本身不能调用 Tauri 的 Rust 命令，完整功能请使用 `npm run tauri dev`。
+浏览器打开 `http://127.0.0.1:1420`，点击顶部“刷新”，然后点击“模拟”连接 Mock 硬件。动作组默认来自：
+
+```text
+../TonyPi/ActionGroups
+```
 
 ## 机器人部署方式
 
@@ -54,14 +46,14 @@ python3 agent/main.py \
   --token 'change-this-token'
 ```
 
-Tauri 客户端中通过“Agent 设置”填写机器人地址和端口。远程使用时应设置访问令牌，并只在 TonyPi 局域网中开放端口。
+浏览器中通过“Agent 设置”填写完整 HTTP 地址，例如 `http://192.168.1.20:8765`。远程使用时应设置访问令牌，并只在 TonyPi 局域网中开放端口。
+Agent 默认只允许来自 `http://127.0.0.1:1420` 的浏览器页面；如果前端部署在其他地址，可增加 `--cors-origin http://你的前端地址`。
 
 ## 验证
 
 ```bash
 python3 -m unittest discover -s agent -v
 npm run build
-cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
 ## 重要安全说明

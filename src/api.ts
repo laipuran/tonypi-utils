@@ -1,12 +1,60 @@
-import { invoke } from "@tauri-apps/api/core";
 import type { Action, ActionGroupDocument, AgentStatus, GroupMeta } from "./types";
 
-export function agentCall<T>(method: string, params: Record<string, unknown> = {}) {
-  return invoke<T>("agent_call", { method, params });
+export type AgentSettings = {
+  url: string;
+  token: string;
+};
+
+const defaultSettings: AgentSettings = {
+  url: "http://127.0.0.1:8765",
+  token: "",
+};
+
+function loadSettings(): AgentSettings {
+  try {
+    const stored = localStorage.getItem("tonypi-agent-settings");
+    if (stored) return { ...defaultSettings, ...JSON.parse(stored) };
+  } catch {
+    // localStorage is unavailable in some preview environments.
+  }
+  return defaultSettings;
 }
 
-export function configureAgent(host: string, port: number, token: string) {
-  return invoke<void>("configure_agent", { host, port, token });
+let settings = loadSettings();
+
+export function getAgentSettings(): AgentSettings {
+  return { ...settings };
+}
+
+export function configureAgent(url: string, token: string): void {
+  settings = { url: url.replace(/\/$/, ""), token };
+  try {
+    localStorage.setItem("tonypi-agent-settings", JSON.stringify(settings));
+  } catch {
+    // Keep the in-memory setting for private browsing contexts.
+  }
+}
+
+export async function agentCall<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+  let response: Response;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
+  try {
+    response = await fetch(`${settings.url}/api/call`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method, params, token: settings.token }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    const reason = error instanceof DOMException && error.name === "AbortError" ? "请求超时" : String(error);
+    throw new Error(`无法连接 Agent ${settings.url}：${reason}`);
+  } finally {
+    window.clearTimeout(timeout);
+  }
+  const payload = await response.json() as { ok: boolean; result?: T; error?: string };
+  if (!response.ok || !payload.ok) throw new Error(payload.error ?? `Agent HTTP 错误 ${response.status}`);
+  return payload.result as T;
 }
 
 export const api = {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, configureAgent } from "./api";
+import { api, configureAgent, getAgentSettings, type AgentSettings } from "./api";
 import { ActionList } from "./features/actions/ActionList";
 import { GroupPanel } from "./features/groups/GroupPanel";
 import { JointDiagram } from "./features/joints/JointDiagram";
@@ -23,7 +23,7 @@ export default function App() {
   const [servoValues, setServoValues] = useState(Array(SERVO_COUNT).fill(500));
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("正在连接 Agent…");
-  const [agentSettings, setAgentSettings] = useState({ host: "127.0.0.1", port: 8765, token: "" });
+  const [agentSettings, setAgentSettings] = useState<AgentSettings>(getAgentSettings());
   const servoTimers = useRef<Record<number, number>>({});
 
   const showMessage = useCallback((text: string) => {
@@ -277,15 +277,14 @@ export default function App() {
   };
 
   const updateAgent = async () => {
-    const host = window.prompt("Agent 地址", agentSettings.host) ?? agentSettings.host;
-    const port = Number(window.prompt("Agent 端口", String(agentSettings.port)) ?? agentSettings.port);
-    if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      showMessage("Agent 端口必须是 1–65535 的整数");
+    const url = window.prompt("Agent HTTP 地址", agentSettings.url) ?? agentSettings.url;
+    if (!/^https?:\/\/[^\s/]+(?::\d+)?(?:\/[^\s]*)?$/.test(url)) {
+      showMessage("Agent 地址必须是有效的 http:// 或 https:// 地址");
       return;
     }
     const token = window.prompt("Agent 令牌（可留空）", agentSettings.token) ?? agentSettings.token;
-    setAgentSettings({ host, port, token });
-    await configureAgent(host, port, token);
+    setAgentSettings({ url, token });
+    configureAgent(url, token);
     await refresh();
   };
 
