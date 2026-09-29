@@ -34,6 +34,9 @@ class PlaybackController:
             self.hardware.stop()
         except Exception:
             pass
+        thread = self._thread
+        if thread and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=2)
 
     def _run(self, actions: list[dict[str, Any]], loop: bool) -> None:
         try:

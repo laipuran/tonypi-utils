@@ -5,7 +5,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from .action_groups import ActionGroupRepository, DEFAULT_SERVO_COUNT
+from .action_groups import ActionGroupRepository, DEFAULT_SERVO_COUNT, normalize_actions
 from .hardware import HardwareError, MockHardware, SerialHardware
 from .playback import PlaybackController
 
@@ -45,6 +45,8 @@ class Agent:
             return self.repository.merge_groups(params["first"], params["second"], params["target"])
         if method == "hardware_connect":
             mode = params.get("mode", self.hardware_mode)
+            if mode not in {"mock", "serial"}:
+                raise AgentError(f"未知硬件模式：{mode}")
             if mode != self.hardware_mode:
                 self.playback.stop()
                 self.hardware.disconnect()
@@ -76,7 +78,8 @@ class Agent:
         if method == "playback_start":
             if not self.hardware.status()["connected"]:
                 raise HardwareError("请先连接硬件，再播放动作组")
-            self.playback.start(params["actions"], bool(params.get("loop", False)))
+            actions = normalize_actions(params["actions"], int(params.get("servo_count", DEFAULT_SERVO_COUNT)))
+            self.playback.start(actions, bool(params.get("loop", False)))
             return self.playback.status()
         if method == "playback_stop":
             self.playback.stop()

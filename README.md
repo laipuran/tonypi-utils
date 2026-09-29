@@ -12,6 +12,10 @@
 - 已接入 HiwonderSDK 的真实串口适配器（尚未连接机器人验证）
 - 浏览器通过 HTTP JSON 接口连接 Agent
 
+### SDK 对接说明
+
+串口适配器按当前 HiwonderSDK 实现调用：`Board(device=...)`、`enable_reception(True)`、`bus_servo_set_position(seconds, [[id, pulse]])`、`bus_servo_read_position(id)`、`bus_servo_stop([ids])` 和 `bus_servo_enable_torque(id, enabled)`。开发机测试覆盖了这些调用的参数形状和时间单位；真机仍需在安全支撑条件下进行首次验证。
+
 ## 开发机离线运行
 
 终端一：启动 Agent，使用本地 `../TonyPi` 动作组目录和模拟硬件：

@@ -35,9 +35,14 @@ class MockHardware:
         self._validate(servo_id, pulse)
         self.pose[servo_id - 1] = pulse
 
-    def set_pose(self, positions: list[tuple[int, int]], _time_ms: int) -> None:
+    def set_pose(self, positions: list[tuple[int, int]], time_ms: int) -> None:
+        if not 0 <= time_ms <= 9999:
+            raise HardwareError("舵机运动时间必须在 0 到 9999 ms 之间")
         for servo_id, pulse in positions:
-            self.set_servo(servo_id, pulse, _time_ms)
+            self._validate(servo_id, pulse)
+        self._require_connected()
+        for servo_id, pulse in positions:
+            self.pose[servo_id - 1] = pulse
 
     def stop(self, _ids: list[int] | None = None) -> None:
         self._require_connected()
@@ -72,11 +77,19 @@ class SerialHardware:
         sdk_path = f"{self.tonypi_root}/HiwonderSDK"
         if sdk_path not in sys.path:
             sys.path.insert(0, sdk_path)
+        board = None
         try:
             module = importlib.import_module("hiwonder.ros_robot_controller_sdk")
-            self.board = module.Board(device=self.device)
-            self.board.enable_reception(True)
+            board = module.Board(device=self.device)
+            board.enable_reception(True)
+            self.board = board
         except Exception as exc:
+            if board is not None:
+                try:
+                    board.enable_reception(False)
+                    board.port.close()
+                except Exception:
+                    pass
             self.board = None
             raise HardwareError(f"无法连接舵机控制板：{exc}") from exc
 
@@ -109,7 +122,12 @@ class SerialHardware:
             values: list[int] = []
             for servo_id in range(1, self.servo_count + 1):
                 result = board.bus_servo_read_position(servo_id)
-                values.append(int(result[0]) if result else 500)
+                if not result:
+                    raise HardwareError(f"无法读取舵机 {servo_id} 的位置")
+                position = int(result[0])
+                if not 0 <= position <= 1000:
+                    raise HardwareError(f"舵机 {servo_id} 返回了无效位置：{position}")
+                values.append(position)
             return values
 
     def set_servo(self, servo_id: int, pulse: int, time_ms: int) -> None:
@@ -120,6 +138,8 @@ class SerialHardware:
             return
         if not 0 <= time_ms <= 9999:
             raise HardwareError("舵机运动时间必须在 0 到 9999 ms 之间")
+        for servo_id, pulse in positions:
+            self._validate(servo_id, pulse)
         with self._lock:
             board = self._require_board()
             board.bus_servo_set_position(time_ms / 1000.0, positions)
@@ -132,4 +152,12 @@ class SerialHardware:
         with self._lock:
             board = self._require_board()
             for servo_id in servo_ids:
+                if not 1 <= servo_id <= self.servo_count:
+                    raise HardwareError(f"舵机编号超出范围：{servo_id}")
                 board.bus_servo_enable_torque(servo_id, enabled)
+
+    def _validate(self, servo_id: int, pulse: int) -> None:
+        if not 1 <= servo_id <= self.servo_count:
+            raise HardwareError(f"舵机编号超出范围：{servo_id}")
+        if not 0 <= pulse <= 1000:
+            raise HardwareError(f"舵机值必须在 0 到 1000 之间：{pulse}")
