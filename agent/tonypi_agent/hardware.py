@@ -10,10 +10,16 @@ class HardwareError(RuntimeError):
     """A hardware connection or command error."""
 
 
+PWM_SERVO_COUNT = 4
+PWM_MIN_PULSE = 500
+PWM_MAX_PULSE = 2500
+
+
 class MockHardware:
     def __init__(self, servo_count: int = 18):
         self.servo_count = servo_count
         self.pose = [500] * servo_count
+        self.pwm_pose = [1500, 1435, 1500, 1500]
         self.connected = False
         self.torque_enabled = [True] * servo_count
 
@@ -24,16 +30,33 @@ class MockHardware:
         self.connected = False
 
     def status(self) -> dict[str, Any]:
-        return {"connected": self.connected, "mode": "mock", "device": "mock", "servo_count": self.servo_count}
+        return {
+            "connected": self.connected,
+            "mode": "mock",
+            "device": "mock",
+            "servo_count": self.servo_count,
+            "pwm_servo_count": PWM_SERVO_COUNT,
+        }
 
     def read_pose(self) -> list[int]:
         self._require_connected()
         return self.pose[:]
 
+    def read_pwm_pose(self, servo_ids: list[int]) -> list[int]:
+        self._require_connected()
+        return [self.pwm_pose[servo_id - 1] for servo_id in servo_ids]
+
     def set_servo(self, servo_id: int, pulse: int, _time_ms: int) -> None:
         self._require_connected()
         self._validate(servo_id, pulse)
         self.pose[servo_id - 1] = pulse
+
+    def set_pwm_servo(self, servo_id: int, pulse: int, time_ms: int) -> None:
+        if not 0 <= time_ms <= 9999:
+            raise HardwareError("PWM 舵机运动时间必须在 0 到 9999 ms 之间")
+        self._validate_pwm(servo_id, pulse)
+        self._require_connected()
+        self.pwm_pose[servo_id - 1] = pulse
 
     def set_pose(self, positions: list[tuple[int, int]], time_ms: int) -> None:
         if not 0 <= time_ms <= 9999:
@@ -64,6 +87,11 @@ class MockHardware:
         if not 0 <= pulse <= 1000:
             raise HardwareError(f"舵机值必须在 0 到 1000 之间：{pulse}")
 
+    def _validate_pwm(self, servo_id: int, pulse: int) -> None:
+        if not 1 <= servo_id <= PWM_SERVO_COUNT:
+            raise HardwareError(f"PWM 舵机通道超出范围：{servo_id}")
+        if not PWM_MIN_PULSE <= pulse <= PWM_MAX_PULSE:
+            raise HardwareError(f"PWM 舵机值必须在 {PWM_MIN_PULSE} 到 {PWM_MAX_PULSE} 之间：{pulse}")
 
 class SerialHardware:
     def __init__(self, tonypi_root: str, device: str = "/dev/ttyAMA0", servo_count: int = 18):
@@ -109,6 +137,7 @@ class SerialHardware:
             "mode": "serial",
             "device": self.device,
             "servo_count": self.servo_count,
+            "pwm_servo_count": PWM_SERVO_COUNT,
         }
 
     def _require_board(self):
@@ -130,8 +159,30 @@ class SerialHardware:
                 values.append(position)
             return values
 
+    def read_pwm_pose(self, servo_ids: list[int]) -> list[int]:
+        with self._lock:
+            board = self._require_board()
+            values: list[int] = []
+            for servo_id in servo_ids:
+                self._validate_pwm(servo_id, PWM_MIN_PULSE)
+                result = board.pwm_servo_read_position(servo_id)
+                if result is None:
+                    raise HardwareError(f"无法读取 PWM 舵机 {servo_id} 的位置")
+                pulse = int(result)
+                if not PWM_MIN_PULSE <= pulse <= PWM_MAX_PULSE:
+                    raise HardwareError(f"PWM 舵机 {servo_id} 返回了无效位置：{pulse}")
+                values.append(pulse)
+            return values
+
     def set_servo(self, servo_id: int, pulse: int, time_ms: int) -> None:
         self.set_pose([(servo_id, pulse)], time_ms)
+
+    def set_pwm_servo(self, servo_id: int, pulse: int, time_ms: int) -> None:
+        if not 0 <= time_ms <= 9999:
+            raise HardwareError("PWM 舵机运动时间必须在 0 到 9999 ms 之间")
+        self._validate_pwm(servo_id, pulse)
+        with self._lock:
+            self._require_board().pwm_servo_set_position(time_ms / 1000.0, [(servo_id, pulse)])
 
     def set_pose(self, positions: list[tuple[int, int]], time_ms: int) -> None:
         if not positions:
@@ -161,3 +212,9 @@ class SerialHardware:
             raise HardwareError(f"舵机编号超出范围：{servo_id}")
         if not 0 <= pulse <= 1000:
             raise HardwareError(f"舵机值必须在 0 到 1000 之间：{pulse}")
+
+    def _validate_pwm(self, servo_id: int, pulse: int) -> None:
+        if not 1 <= servo_id <= PWM_SERVO_COUNT:
+            raise HardwareError(f"PWM 舵机通道超出范围：{servo_id}")
+        if not PWM_MIN_PULSE <= pulse <= PWM_MAX_PULSE:
+            raise HardwareError(f"PWM 舵机值必须在 {PWM_MIN_PULSE} 到 {PWM_MAX_PULSE} 之间：{pulse}")

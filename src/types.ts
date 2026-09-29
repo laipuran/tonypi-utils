@@ -22,6 +22,7 @@ export type HardwareStatus = {
   mode: string;
   device: string;
   servo_count: number;
+  pwm_servo_count: number;
 };
 
 export type AgentStatus = {
@@ -36,6 +37,7 @@ export type AgentStatus = {
 };
 
 export const SERVO_COUNT = 18;
+export const HEAD_SERVO_DEFAULTS = [1500, 1435];
 
 export const defaultServoNames = [
   "左脚左右",

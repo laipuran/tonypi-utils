@@ -9,12 +9,13 @@
 - 支持动作时间和 18 个舵机值的表格编辑
 - 支持 SVG 舵机/关节示意图
 - 支持 Mock 硬件实时滑块调节
+- 支持独立的 PWM 头部控制（PWM 1 上下、PWM 2 左右）
 - 已接入 HiwonderSDK 的真实串口适配器（尚未连接机器人验证）
 - 浏览器通过 HTTP JSON 接口连接 Agent
 
 ### SDK 对接说明
 
-串口适配器按当前 HiwonderSDK 实现调用：`Board(device=...)`、`enable_reception(True)`、`bus_servo_set_position(seconds, [[id, pulse]])`、`bus_servo_read_position(id)`、`bus_servo_stop([ids])` 和 `bus_servo_enable_torque(id, enabled)`。开发机测试覆盖了这些调用的参数形状和时间单位；真机仍需在安全支撑条件下进行首次验证。
+串口适配器按当前 HiwonderSDK 实现调用：总线舵机使用 `bus_servo_*` 接口，头部使用独立的 `pwm_servo_set_position(seconds, [[id, pulse]])` 和 `pwm_servo_read_position(id)` 接口。开发机测试覆盖了这些调用的参数形状和时间单位；真机仍需在安全支撑条件下进行首次验证。
 
 ## 开发机离线运行
 

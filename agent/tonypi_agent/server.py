@@ -61,8 +61,13 @@ class Agent:
             return self.hardware.status()
         if method == "read_pose":
             return {"servos": self.hardware.read_pose()}
+        if method == "read_head_pose":
+            return {"servos": self.hardware.read_pwm_pose([1, 2])}
         if method == "set_servo":
             self.hardware.set_servo(int(params["id"]), int(params["pulse"]), int(params.get("time_ms", 100)))
+            return {"id": int(params["id"]), "pulse": int(params["pulse"])}
+        if method == "set_head_servo":
+            self.hardware.set_pwm_servo(int(params["id"]), int(params["pulse"]), int(params.get("time_ms", 100)))
             return {"id": int(params["id"]), "pulse": int(params["pulse"])}
         if method == "set_pose":
             positions = [(int(item["id"]), int(item["pulse"])) for item in params["positions"]]

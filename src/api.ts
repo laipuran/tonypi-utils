@@ -70,8 +70,11 @@ export const api = {
     agentCall<AgentStatus["hardware"]>("hardware_connect", { mode, device }),
   disconnectHardware: () => agentCall<AgentStatus["hardware"]>("hardware_disconnect"),
   readPose: () => agentCall<{ servos: number[] }>("read_pose"),
+  readHeadPose: () => agentCall<{ servos: number[] }>("read_head_pose"),
   setServo: (id: number, pulse: number, timeMs = 100) =>
     agentCall<{ id: number; pulse: number }>("set_servo", { id, pulse, time_ms: timeMs }),
+  setHeadServo: (id: number, pulse: number, timeMs = 100) =>
+    agentCall<{ id: number; pulse: number }>("set_head_servo", { id, pulse, time_ms: timeMs }),
   setPose: (positions: { id: number; pulse: number }[], timeMs = 100) =>
     agentCall<{ count: number }>("set_pose", { positions, time_ms: timeMs }),
   stopHardware: () => agentCall<{ stopped: boolean }>("stop_hardware"),

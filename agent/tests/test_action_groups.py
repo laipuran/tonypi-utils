@@ -40,6 +40,15 @@ class ActionGroupRepositoryTests(unittest.TestCase):
             with self.assertRaises(HardwareError):
                 agent.dispatch("playback_start", {"actions": [{"time": 100, "servos": [500] * 18}]})
 
+    def test_head_pwm_is_separate_from_bus_servo_pose(self):
+        with tempfile.TemporaryDirectory() as directory:
+            agent = Agent(directory, hardware_mode="mock")
+            agent.dispatch("hardware_connect", {"mode": "mock"})
+            agent.dispatch("set_servo", {"id": 1, "pulse": 620, "time_ms": 100})
+            agent.dispatch("set_head_servo", {"id": 1, "pulse": 1600, "time_ms": 200})
+            self.assertEqual(agent.dispatch("read_pose", {})["servos"][0], 620)
+            self.assertEqual(agent.dispatch("read_head_pose", {})["servos"], [1600, 1435])
+
 
 if __name__ == "__main__":
     unittest.main()

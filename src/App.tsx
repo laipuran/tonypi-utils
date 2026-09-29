@@ -4,8 +4,9 @@ import { ActionList } from "./features/actions/ActionList";
 import { GroupPanel } from "./features/groups/GroupPanel";
 import { JointDiagram } from "./features/joints/JointDiagram";
 import { ServoPanel } from "./features/servo/ServoPanel";
-import { blankAction, SERVO_COUNT, type Action, type ActionGroupDocument, type AgentStatus, type GroupMeta } from "./types";
+import { blankAction, HEAD_SERVO_DEFAULTS, SERVO_COUNT, type Action, type ActionGroupDocument, type AgentStatus, type GroupMeta } from "./types";
 import { Toolbar } from "./components/Toolbar";
+import { HeadPanel } from "./features/head/HeadPanel";
 import "./styles.css";
 
 function makeDocument(name = "") : ActionGroupDocument {
@@ -21,10 +22,12 @@ export default function App() {
   const [selectedAction, setSelectedAction] = useState(0);
   const [selectedServo, setSelectedServo] = useState(1);
   const [servoValues, setServoValues] = useState(Array(SERVO_COUNT).fill(500));
+  const [headValues, setHeadValues] = useState([...HEAD_SERVO_DEFAULTS]);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("正在连接 Agent…");
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(getAgentSettings());
   const servoTimers = useRef<Record<number, number>>({});
+  const headTimers = useRef<Record<number, number>>({});
 
   const showMessage = useCallback((text: string) => {
     setMessage(text);
@@ -78,6 +81,18 @@ export default function App() {
       window.clearTimeout(servoTimers.current[id]);
       servoTimers.current[id] = window.setTimeout(() => {
         api.setServo(id, value).catch((error) => showMessage(`舵机控制失败：${String(error)}`));
+      }, 35);
+    }
+  };
+
+  const changeHeadServo = (id: number, value: number) => {
+    const nextValues = [...headValues];
+    nextValues[id - 1] = value;
+    setHeadValues(nextValues);
+    if (isConnected) {
+      window.clearTimeout(headTimers.current[id]);
+      headTimers.current[id] = window.setTimeout(() => {
+        api.setHeadServo(id, value).catch((error) => showMessage(`头部控制失败：${String(error)}`));
       }, 35);
     }
   };
@@ -190,6 +205,26 @@ export default function App() {
     }
   };
 
+  const readHeadPose = async () => {
+    try {
+      const pose = await api.readHeadPose();
+      setHeadValues(pose.servos);
+      showMessage("已读取头部姿态");
+    } catch (error) {
+      showMessage(`读取头部姿态失败：${String(error)}`);
+    }
+  };
+
+  const centerHead = () => {
+    const centered = [...HEAD_SERVO_DEFAULTS];
+    setHeadValues(centered);
+    if (isConnected) {
+      centered.forEach((pulse, index) => {
+        api.setHeadServo(index + 1, pulse).catch((error) => showMessage(`头部回中失败：${String(error)}`));
+      });
+    }
+  };
+
   const center = () => {
     const centered = Array(SERVO_COUNT).fill(500);
     replaceCurrentAction(centered);
@@ -297,7 +332,7 @@ export default function App() {
         dirty={dirty}
         groupName={title}
         message={message}
-        onNew={() => { setDocument(makeDocument()); setGroupName(""); setSelectedGroup(""); setSelectedAction(0); setServoValues(Array(SERVO_COUNT).fill(500)); setDirty(false); }}
+        onNew={() => { setDocument(makeDocument()); setGroupName(""); setSelectedGroup(""); setSelectedAction(0); setServoValues(Array(SERVO_COUNT).fill(500)); setHeadValues([...HEAD_SERVO_DEFAULTS]); setDirty(false); }}
         onSave={saveGroup}
         onRefresh={refresh}
         onMockConnect={() => connectHardware("mock")}
@@ -306,6 +341,7 @@ export default function App() {
       />
       <main className="workspace">
         <aside className="left-column">
+          <HeadPanel values={headValues} connected={isConnected} onChange={changeHeadServo} onRead={readHeadPose} onCenter={centerHead} />
           <ServoPanel values={actionValues} selected={selectedServo} connected={isConnected} onSelect={setSelectedServo} onChange={changeServo} onReadPose={readPose} onCenter={center} onStop={() => api.stopHardware().catch(() => undefined)} onReleaseTorque={releaseTorque} />
           <JointDiagram values={actionValues} selected={selectedServo} onSelect={setSelectedServo} />
         </aside>

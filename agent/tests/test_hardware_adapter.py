@@ -39,6 +39,12 @@ class FakeBoard:
     def bus_servo_enable_torque(self, servo_id, enabled):
         self.torque.append((servo_id, enabled))
 
+    def pwm_servo_read_position(self, servo_id):
+        return 1500 if servo_id == 1 else 1435
+
+    def pwm_servo_set_position(self, duration, positions):
+        self.positions.append((duration, positions))
+
 
 class SerialHardwareAdapterTests(unittest.TestCase):
     def test_matches_sdk_units_and_shapes(self):
@@ -50,6 +56,9 @@ class SerialHardwareAdapterTests(unittest.TestCase):
 
         hardware.set_servo(1, 620, 100)
         self.assertEqual(board.positions, [(0.1, [(1, 620)])])
+        hardware.set_pwm_servo(1, 1600, 200)
+        self.assertEqual(board.positions[-1], (0.2, [(1, 1600)]))
+        self.assertEqual(hardware.read_pwm_pose([1, 2]), [1500, 1435])
         self.assertEqual(hardware.read_pose(), [500] * 18)
         hardware.stop([1, 2])
         hardware.set_torque([1], False)
