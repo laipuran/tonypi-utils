@@ -16,7 +16,6 @@ export default function App() {
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [groups, setGroups] = useState<GroupMeta[]>([]);
   const [document, setDocument] = useState<ActionGroupDocument>(makeDocument());
-  const [standAction, setStandAction] = useState<Action>(DEFAULT_STAND_ACTION);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedAction, setSelectedAction] = useState(0);
@@ -28,7 +27,6 @@ export default function App() {
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(getAgentSettings());
   const servoTimers = useRef<Record<number, number>>({});
   const headTimers = useRef<Record<number, number>>({});
-  const defaultLoaded = useRef(false);
 
   const showMessage = useCallback((text: string) => {
     setMessage(text);
@@ -37,15 +35,9 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [nextStatus, nextGroups, nextDefault] = await Promise.all([api.status(), api.groups(), api.defaultAction()]);
+      const [nextStatus, nextGroups] = await Promise.all([api.status(), api.groups()]);
       setStatus(nextStatus);
       setGroups(nextGroups);
-      setStandAction(nextDefault);
-      if (!defaultLoaded.current) {
-        defaultLoaded.current = true;
-        setDocument(makeDocument("", nextDefault));
-        setRobotPose([...nextDefault.servos]);
-      }
       setMessage("");
     } catch (error) {
       showMessage(`Agent 未连接：${String(error)}`);
@@ -133,14 +125,14 @@ export default function App() {
   };
 
   const addAction = () => {
-    const next: Action = { ...standAction, index: document.actions.length + 1, servos: [...standAction.servos] };
+    const next: Action = { ...DEFAULT_STAND_ACTION, index: document.actions.length + 1, servos: [...DEFAULT_STAND_ACTION.servos] };
     setDocument((current) => ({ ...current, actions: [...current.actions, next] }));
     setSelectedAction(document.actions.length);
     setDirty(true);
   };
 
   const insertAction = () => {
-    const next: Action = { ...standAction, index: selectedAction + 1, servos: [...standAction.servos] };
+    const next: Action = { ...DEFAULT_STAND_ACTION, index: selectedAction + 1, servos: [...DEFAULT_STAND_ACTION.servos] };
     setDocument((current) => ({ ...current, actions: current.actions.flatMap((action, index) => index === selectedAction ? [next, action] : [action]).map((action, index) => ({ ...action, index: index + 1 })) }));
     setSelectedAction(selectedAction + 1);
     setDirty(true);
@@ -182,7 +174,8 @@ export default function App() {
     try {
       const pose = await api.readPose();
       setRobotPose(pose.servos);
-      showMessage(pose.unavailable.length ? `已读取姿态，跳过舵机 ${pose.unavailable.join("、")}` : "已读取舵机姿态");
+      const unavailable = pose.unavailable ?? [];
+      showMessage(unavailable.length ? `已读取姿态，跳过舵机 ${unavailable.join("、")}` : "已读取舵机姿态");
     } catch (error) {
       showMessage(`读取姿态失败：${String(error)}`);
     }
@@ -222,7 +215,7 @@ export default function App() {
   };
 
   const setStandPose = () => {
-    if (isConnected) void setRobotPoseFromAction(standAction, "已设置为站立姿态");
+    if (isConnected) void setRobotPoseFromAction(DEFAULT_STAND_ACTION, "已设置为站立姿态");
   };
 
   const applySelectedAction = () => {
@@ -332,7 +325,7 @@ export default function App() {
   };
 
   const newDocument = () => {
-    setDocument(makeDocument("", standAction));
+    setDocument(makeDocument());
     setGroupName("");
     setSelectedGroup("");
     setSelectedAction(0);

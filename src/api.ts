@@ -59,7 +59,6 @@ export async function agentCall<T>(method: string, params: Record<string, unknow
 
 export const api = {
   status: () => agentCall<AgentStatus>("status"),
-  defaultAction: () => agentCall<Action>("default_action"),
   groups: () => agentCall<GroupMeta[]>("list_groups"),
   load: (name: string) => agentCall<ActionGroupDocument>("load_group", { name }),
   save: (name: string, actions: Action[], servoCount: number) =>
