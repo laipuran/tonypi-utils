@@ -44,14 +44,16 @@ button:disabled { cursor: not-allowed; opacity: .42; }
 .panel-heading h2 { margin: 5px 0 0; font-size: 15px; font-weight: 650; color: #f1f5f8; }
 .muted-caption, .servo-count { color: #718193; font-size: 11px; }
 
-.servo-actions { display: flex; gap: 6px; padding: 0 14px 12px; }
+.servo-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 12px; }
 .small-button { padding: 6px 8px; font-size: 11px; }
 .servo-list { padding: 0 9px 12px; }
 .servo-row { display: grid; grid-template-columns: 90px 1fr 56px; align-items: center; gap: 8px; padding: 7px 7px; border: 1px solid transparent; border-radius: 6px; }
 .servo-row:hover { background: #192530; }
 .servo-row.active { background: #1b2b35; border-color: #718d50; }
 .servo-label { display: flex; align-items: center; gap: 7px; color: #9cabb9; font-size: 11px; white-space: nowrap; }
+.servo-label small { color: #718293; font-size: 9px; }
 .servo-id { color: #d8ff51; font-family: ui-monospace, monospace; font-size: 10px; }
+.servo-row.unavailable { opacity: .48; }
 input[type="range"] { accent-color: #d8ff51; width: 100%; }
 .pulse-input { width: 56px; color: #dbe6ee; background: #0d141b; border: 1px solid #30404f; border-radius: 4px; padding: 4px; text-align: right; font-family: ui-monospace, monospace; font-size: 11px; }
 .pulse-input:focus, .text-input:focus { outline: 1px solid #d8ff51; border-color: #d8ff51; }

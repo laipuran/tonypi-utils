@@ -4,6 +4,11 @@ export type Action = {
   servos: number[];
 };
 
+export type RobotPose = {
+  servos: (number | null)[];
+  unavailable: number[];
+};
+
 export type ActionGroupDocument = {
   name: string;
   servo_count: number;
@@ -22,6 +27,7 @@ export type HardwareStatus = {
   mode: string;
   device: string;
   servo_count: number;
+  available_servo_count: number;
   pwm_servo_count: number;
 };
 
@@ -38,6 +44,11 @@ export type AgentStatus = {
 
 export const SERVO_COUNT = 18;
 export const HEAD_SERVO_DEFAULTS = [1500, 1435];
+export const DEFAULT_STAND_ACTION: Action = {
+  index: 1,
+  time: 500,
+  servos: [500, 390, 500, 600, 500, 575, 800, 725, 500, 610, 500, 400, 500, 425, 200, 275, 500, 500],
+};
 
 export const defaultServoNames = [
   "左脚左右",
@@ -60,6 +71,6 @@ export const defaultServoNames = [
   "辅助 18",
 ];
 
-export function blankAction(): Action {
-  return { index: 1, time: 500, servos: Array(SERVO_COUNT).fill(500) };
+export function blankAction(template: Action = DEFAULT_STAND_ACTION): Action {
+  return { ...template, index: 1, servos: [...template.servos] };
 }

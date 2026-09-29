@@ -1,3 +1,5 @@
+import { CommitNumberInput } from "../../components/CommitNumberInput";
+
 type Props = {
   values: number[];
   connected: boolean;
@@ -44,14 +46,13 @@ export function HeadPanel({ values, connected, onChange, onRead, onCenter }: Pro
                 disabled={!connected}
                 onChange={(event) => onChange(control.id, Number(event.target.value))}
               />
-              <input
+              <CommitNumberInput
                 className="pulse-input"
-                type="number"
-                min="500"
-                max="2500"
+                min={500}
+                max={2500}
                 value={value}
                 disabled={!connected}
-                onChange={(event) => onChange(control.id, Math.max(500, Math.min(2500, Number(event.target.value) || 500)))}
+                onCommit={(next) => onChange(control.id, next)}
               />
             </div>
           );

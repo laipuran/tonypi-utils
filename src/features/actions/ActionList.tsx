@@ -1,18 +1,18 @@
 import type { Action } from "../../types";
+import { CommitNumberInput } from "../../components/CommitNumberInput";
 
 type Props = {
   actions: Action[];
   selected: number;
   onSelect: (index: number) => void;
   onAdd: () => void;
-  onUpdate: () => void;
   onInsert: () => void;
   onDelete: () => void;
   onMove: (direction: -1 | 1) => void;
   onCellChange: (actionIndex: number, field: "time" | "servo", servoIndex: number, value: number) => void;
 };
 
-export function ActionList({ actions, selected, onSelect, onAdd, onUpdate, onInsert, onDelete, onMove, onCellChange }: Props) {
+export function ActionList({ actions, selected, onSelect, onAdd, onInsert, onDelete, onMove, onCellChange }: Props) {
   return (
     <section className="action-card panel-card">
       <div className="panel-heading">
@@ -24,7 +24,6 @@ export function ActionList({ actions, selected, onSelect, onAdd, onUpdate, onIns
       </div>
       <div className="action-toolbar">
         <button className="small-button accent" onClick={onAdd}>＋ 添加动作</button>
-        <button className="small-button" onClick={onUpdate}>更新</button>
         <button className="small-button" onClick={onInsert}>插入</button>
         <button className="small-button" onClick={onDelete}>删除</button>
         <span className="toolbar-spacer" />
@@ -44,8 +43,8 @@ export function ActionList({ actions, selected, onSelect, onAdd, onUpdate, onIns
             {actions.map((action, index) => (
               <tr key={`${action.index}-${index}`} className={selected === index ? "selected" : ""} onClick={() => onSelect(index)}>
                 <td className="sticky-col action-number">{String(index + 1).padStart(2, "0")}</td>
-                <td className="time-cell"><input className="table-input time-input" type="number" min="20" max="9999" value={action.time} onClick={(event) => event.stopPropagation()} onChange={(event) => onCellChange(index, "time", -1, Number(event.target.value))} /></td>
-                {action.servos.map((value, servoIndex) => <td key={servoIndex}><input className="table-input" type="number" min="0" max="1000" value={value} onClick={(event) => event.stopPropagation()} onChange={(event) => onCellChange(index, "servo", servoIndex, Number(event.target.value))} /></td>)}
+                <td className="time-cell"><CommitNumberInput className="table-input time-input" min={20} max={9999} value={action.time} stopClick onCommit={(value) => onCellChange(index, "time", -1, value)} /></td>
+                {action.servos.map((value, servoIndex) => <td key={servoIndex}><CommitNumberInput className="table-input" min={0} max={1000} value={value} stopClick onCommit={(next) => onCellChange(index, "servo", servoIndex, next)} /></td>)}
               </tr>
             ))}
           </tbody>

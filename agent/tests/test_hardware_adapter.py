@@ -59,7 +59,7 @@ class SerialHardwareAdapterTests(unittest.TestCase):
         hardware.set_pwm_servo(1, 1600, 200)
         self.assertEqual(board.positions[-1], (0.2, [(1, 1600)]))
         self.assertEqual(hardware.read_pwm_pose([1, 2]), [1500, 1435])
-        self.assertEqual(hardware.read_pose(), [500] * 18)
+        self.assertEqual(hardware.read_pose(), [500] * 16 + [None, None])
         hardware.stop([1, 2])
         hardware.set_torque([1], False)
         self.assertEqual(board.stops, [[1, 2]])

@@ -1,4 +1,4 @@
-import type { Action, ActionGroupDocument, AgentStatus, GroupMeta } from "./types";
+import type { Action, ActionGroupDocument, AgentStatus, GroupMeta, RobotPose } from "./types";
 
 export type AgentSettings = {
   url: string;
@@ -59,6 +59,7 @@ export async function agentCall<T>(method: string, params: Record<string, unknow
 
 export const api = {
   status: () => agentCall<AgentStatus>("status"),
+  defaultAction: () => agentCall<Action>("default_action"),
   groups: () => agentCall<GroupMeta[]>("list_groups"),
   load: (name: string) => agentCall<ActionGroupDocument>("load_group", { name }),
   save: (name: string, actions: Action[], servoCount: number) =>
@@ -69,7 +70,7 @@ export const api = {
   connectHardware: (mode: "mock" | "serial", device?: string) =>
     agentCall<AgentStatus["hardware"]>("hardware_connect", { mode, device }),
   disconnectHardware: () => agentCall<AgentStatus["hardware"]>("hardware_disconnect"),
-  readPose: () => agentCall<{ servos: number[] }>("read_pose"),
+  readPose: () => agentCall<RobotPose>("read_pose"),
   readHeadPose: () => agentCall<{ servos: number[] }>("read_head_pose"),
   setServo: (id: number, pulse: number, timeMs = 100) =>
     agentCall<{ id: number; pulse: number }>("set_servo", { id, pulse, time_ms: timeMs }),

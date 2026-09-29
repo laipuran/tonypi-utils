@@ -3,30 +3,32 @@ import { api, configureAgent, getAgentSettings, type AgentSettings } from "./api
 import { ActionList } from "./features/actions/ActionList";
 import { GroupPanel } from "./features/groups/GroupPanel";
 import { ServoPanel } from "./features/servo/ServoPanel";
-import { blankAction, HEAD_SERVO_DEFAULTS, SERVO_COUNT, type Action, type ActionGroupDocument, type AgentStatus, type GroupMeta } from "./types";
+import { blankAction, DEFAULT_STAND_ACTION, HEAD_SERVO_DEFAULTS, SERVO_COUNT, type Action, type ActionGroupDocument, type AgentStatus, type GroupMeta } from "./types";
 import { Toolbar } from "./components/Toolbar";
 import { HeadPanel } from "./features/head/HeadPanel";
 import "./styles.css";
 
-function makeDocument(name = "") : ActionGroupDocument {
-  return { name, servo_count: SERVO_COUNT, actions: [{ ...blankAction() }] };
+function makeDocument(name = "", template: Action = DEFAULT_STAND_ACTION): ActionGroupDocument {
+  return { name, servo_count: SERVO_COUNT, actions: [blankAction(template)] };
 }
 
 export default function App() {
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [groups, setGroups] = useState<GroupMeta[]>([]);
   const [document, setDocument] = useState<ActionGroupDocument>(makeDocument());
+  const [standAction, setStandAction] = useState<Action>(DEFAULT_STAND_ACTION);
   const [groupName, setGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedAction, setSelectedAction] = useState(0);
   const [selectedServo, setSelectedServo] = useState(1);
-  const [servoValues, setServoValues] = useState(Array(SERVO_COUNT).fill(500));
+  const [robotPose, setRobotPose] = useState<(number | null)[]>([...DEFAULT_STAND_ACTION.servos]);
   const [headValues, setHeadValues] = useState([...HEAD_SERVO_DEFAULTS]);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("正在连接 Agent…");
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(getAgentSettings());
   const servoTimers = useRef<Record<number, number>>({});
   const headTimers = useRef<Record<number, number>>({});
+  const defaultLoaded = useRef(false);
 
   const showMessage = useCallback((text: string) => {
     setMessage(text);
@@ -35,9 +37,15 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [nextStatus, nextGroups] = await Promise.all([api.status(), api.groups()]);
+      const [nextStatus, nextGroups, nextDefault] = await Promise.all([api.status(), api.groups(), api.defaultAction()]);
       setStatus(nextStatus);
       setGroups(nextGroups);
+      setStandAction(nextDefault);
+      if (!defaultLoaded.current) {
+        defaultLoaded.current = true;
+        setDocument(makeDocument("", nextDefault));
+        setRobotPose([...nextDefault.servos]);
+      }
       setMessage("");
     } catch (error) {
       showMessage(`Agent 未连接：${String(error)}`);
@@ -57,24 +65,14 @@ export default function App() {
   }, [refresh]);
 
   const currentAction = document.actions[selectedAction];
-  const actionValues = currentAction?.servos ?? servoValues;
   const isConnected = Boolean(status?.hardware.connected);
   const isPlaying = Boolean(status?.playback.running);
-
-  const replaceCurrentAction = (servos: number[]) => {
-    setDocument((current) => ({
-      ...current,
-      actions: current.actions.map((action, index) => index === selectedAction ? { ...action, servos: [...servos] } : action),
-    }));
-    setServoValues([...servos]);
-    setDirty(true);
-  };
+  const availableServoCount = status?.hardware.available_servo_count ?? SERVO_COUNT;
 
   const changeServo = (id: number, value: number) => {
-    const nextValues = [...actionValues];
+    const nextValues = [...robotPose];
     nextValues[id - 1] = value;
-    setServoValues(nextValues);
-    replaceCurrentAction(nextValues);
+    setRobotPose(nextValues);
     setSelectedServo(id);
     if (isConnected) {
       window.clearTimeout(servoTimers.current[id]);
@@ -104,7 +102,6 @@ export default function App() {
       setGroupName(next.name);
       setSelectedGroup(next.name);
       setSelectedAction(0);
-      setServoValues(next.actions[0]?.servos ?? Array(next.servo_count).fill(500));
       setDirty(false);
       showMessage(`已打开 ${next.name}.d6a`);
     } catch (error) {
@@ -133,23 +130,17 @@ export default function App() {
 
   const selectAction = (index: number) => {
     setSelectedAction(index);
-    setServoValues(document.actions[index]?.servos ?? Array(SERVO_COUNT).fill(500));
   };
 
   const addAction = () => {
-    const next: Action = { index: document.actions.length + 1, time: 500, servos: [...actionValues] };
+    const next: Action = { ...standAction, index: document.actions.length + 1, servos: [...standAction.servos] };
     setDocument((current) => ({ ...current, actions: [...current.actions, next] }));
     setSelectedAction(document.actions.length);
     setDirty(true);
   };
 
-  const updateAction = () => {
-    replaceCurrentAction(servoValues);
-    showMessage(`已更新动作 ${selectedAction + 1}`);
-  };
-
   const insertAction = () => {
-    const next: Action = { index: selectedAction + 1, time: 500, servos: [...actionValues] };
+    const next: Action = { ...standAction, index: selectedAction + 1, servos: [...standAction.servos] };
     setDocument((current) => ({ ...current, actions: current.actions.flatMap((action, index) => index === selectedAction ? [next, action] : [action]).map((action, index) => ({ ...action, index: index + 1 })) }));
     setSelectedAction(selectedAction + 1);
     setDirty(true);
@@ -160,7 +151,6 @@ export default function App() {
     const nextActions = document.actions.filter((_, index) => index !== selectedAction).map((action, index) => ({ ...action, index: index + 1 }));
     setDocument((current) => ({ ...current, actions: nextActions }));
     setSelectedAction(Math.max(0, Math.min(selectedAction, nextActions.length - 1)));
-    setServoValues(nextActions[Math.max(0, Math.min(selectedAction, nextActions.length - 1))]?.servos ?? Array(SERVO_COUNT).fill(500));
     setDirty(true);
   };
 
@@ -171,7 +161,6 @@ export default function App() {
     [next[selectedAction], next[target]] = [next[target], next[selectedAction]];
     setDocument((current) => ({ ...current, actions: next.map((action, index) => ({ ...action, index: index + 1 })) }));
     setSelectedAction(target);
-    setServoValues(next[target].servos);
     setDirty(true);
   };
 
@@ -186,19 +175,14 @@ export default function App() {
         return { ...action, servos };
       }),
     }));
-    if (actionIndex === selectedAction) {
-      const nextValues = [...actionValues];
-      if (field === "servo") nextValues[servoIndex] = Math.max(0, Math.min(1000, rawValue || 0));
-      if (field === "servo") setServoValues(nextValues);
-    }
     setDirty(true);
   };
 
   const readPose = async () => {
     try {
       const pose = await api.readPose();
-      replaceCurrentAction(pose.servos);
-      showMessage("已读取舵机姿态");
+      setRobotPose(pose.servos);
+      showMessage(pose.unavailable.length ? `已读取姿态，跳过舵机 ${pose.unavailable.join("、")}` : "已读取舵机姿态");
     } catch (error) {
       showMessage(`读取姿态失败：${String(error)}`);
     }
@@ -224,10 +208,36 @@ export default function App() {
     }
   };
 
-  const center = () => {
-    const centered = Array(SERVO_COUNT).fill(500);
-    replaceCurrentAction(centered);
-    if (isConnected) api.setPose(centered.map((pulse, index) => ({ id: index + 1, pulse }))).catch((error) => showMessage(String(error)));
+  const setRobotPoseFromAction = async (action: Action, label: string) => {
+    const positions = action.servos
+      .map((pulse, index) => ({ id: index + 1, pulse }))
+      .filter(({ id }) => id <= availableServoCount);
+    try {
+      await api.setPose(positions, action.time);
+      setRobotPose((current) => current.map((value, index) => index < availableServoCount ? action.servos[index] : value));
+      showMessage(label);
+    } catch (error) {
+      showMessage(`${label}失败：${String(error)}`);
+    }
+  };
+
+  const setStandPose = () => {
+    if (isConnected) void setRobotPoseFromAction(standAction, "已设置为站立姿态");
+  };
+
+  const applySelectedAction = () => {
+    if (currentAction && isConnected) void setRobotPoseFromAction(currentAction, `已置位动作 ${selectedAction + 1}`);
+  };
+
+  const savePoseToAction = () => {
+    if (!currentAction) return;
+    const servos = currentAction.servos.map((value, index) => robotPose[index] ?? value);
+    setDocument((current) => ({
+      ...current,
+      actions: current.actions.map((action, index) => index === selectedAction ? { ...action, servos } : action),
+    }));
+    setDirty(true);
+    showMessage(`已将当前位姿保存到动作 ${selectedAction + 1}`);
   };
 
   const connectHardware = async (mode: "mock" | "serial") => {
@@ -301,7 +311,6 @@ export default function App() {
       setGroupName(merged.name);
       setSelectedGroup(merged.name);
       setSelectedAction(0);
-      setServoValues(merged.actions[0]?.servos ?? Array(SERVO_COUNT).fill(500));
       setDirty(false);
       await refresh();
       showMessage(`已合并为 ${merged.name}.d6a`);
@@ -322,6 +331,14 @@ export default function App() {
     await refresh();
   };
 
+  const newDocument = () => {
+    setDocument(makeDocument("", standAction));
+    setGroupName("");
+    setSelectedGroup("");
+    setSelectedAction(0);
+    setDirty(false);
+  };
+
   const title = useMemo(() => groupName || "未命名动作组", [groupName]);
 
   return (
@@ -331,7 +348,7 @@ export default function App() {
         dirty={dirty}
         groupName={title}
         message={message}
-        onNew={() => { setDocument(makeDocument()); setGroupName(""); setSelectedGroup(""); setSelectedAction(0); setServoValues(Array(SERVO_COUNT).fill(500)); setHeadValues([...HEAD_SERVO_DEFAULTS]); setDirty(false); }}
+        onNew={newDocument}
         onSave={saveGroup}
         onRefresh={refresh}
         onMockConnect={() => connectHardware("mock")}
@@ -341,10 +358,10 @@ export default function App() {
       <main className="workspace">
         <aside className="left-column">
           <HeadPanel values={headValues} connected={isConnected} onChange={changeHeadServo} onRead={readHeadPose} onCenter={centerHead} />
-          <ServoPanel values={actionValues} selected={selectedServo} connected={isConnected} onSelect={setSelectedServo} onChange={changeServo} onReadPose={readPose} onCenter={center} onStop={() => api.stopHardware().catch(() => undefined)} onReleaseTorque={releaseTorque} />
+          <ServoPanel values={robotPose} availableCount={availableServoCount} selected={selectedServo} connected={isConnected} onSelect={setSelectedServo} onChange={changeServo} onReadPose={readPose} onStand={setStandPose} onApplyAction={applySelectedAction} onSavePose={savePoseToAction} onStop={() => api.stopHardware().catch(() => undefined)} onReleaseTorque={releaseTorque} />
         </aside>
         <section className="center-column">
-          <ActionList actions={document.actions} selected={selectedAction} onSelect={selectAction} onAdd={addAction} onUpdate={updateAction} onInsert={insertAction} onDelete={deleteAction} onMove={moveAction} onCellChange={changeActionCell} />
+          <ActionList actions={document.actions} selected={selectedAction} onSelect={selectAction} onAdd={addAction} onInsert={insertAction} onDelete={deleteAction} onMove={moveAction} onCellChange={changeActionCell} />
           <div className="hint-bar"><span className="hint-icon">i</span><span>动作值范围 0–1000 · 动作时间 20–9999 ms · 选中动作后可通过左侧滑块实时调整</span><button className="link-button" onClick={updateAgent}>Agent 设置</button></div>
         </section>
         <aside className="right-column">

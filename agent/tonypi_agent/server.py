@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 from .action_groups import ActionGroupRepository, DEFAULT_SERVO_COUNT, normalize_actions
-from .hardware import HardwareError, MockHardware, SerialHardware
+from .hardware import DEFAULT_STAND_POSE, HardwareError, MockHardware, SerialHardware
 from .playback import PlaybackController
 
 
@@ -18,13 +18,30 @@ class Agent:
     def __init__(self, root: str, token: str = "", hardware_mode: str = "mock", device: str = "/dev/ttyAMA0"):
         self.repository = ActionGroupRepository(root)
         self.token = token
-        self.hardware = MockHardware(DEFAULT_SERVO_COUNT) if hardware_mode == "mock" else SerialHardware(root, device)
+        self.default_action = self._load_default_action()
+        self.hardware = self._create_hardware(root, hardware_mode, device)
         self.hardware_mode = hardware_mode
         self.playback = PlaybackController(self.hardware)
+
+    def _load_default_action(self) -> dict[str, Any]:
+        try:
+            document = self.repository.load_group("stand")
+            if document["actions"]:
+                return dict(document["actions"][0])
+        except Exception:
+            pass
+        return {"index": 1, "time": 500, "servos": DEFAULT_STAND_POSE[:]}
+
+    def _create_hardware(self, root: str, mode: str, device: str):
+        if mode == "mock":
+            return MockHardware(DEFAULT_SERVO_COUNT, self.default_action["servos"])
+        return SerialHardware(root, device)
 
     def dispatch(self, method: str, params: dict[str, Any]) -> Any:
         if method == "ping":
             return {"agent": "tonypi-action-editor", "version": 1}
+        if method == "default_action":
+            return dict(self.default_action)
         if method == "status":
             return {
                 "root": str(self.repository.root),
@@ -50,7 +67,7 @@ class Agent:
             if mode != self.hardware_mode:
                 self.playback.stop()
                 self.hardware.disconnect()
-                self.hardware = MockHardware(DEFAULT_SERVO_COUNT) if mode == "mock" else SerialHardware(str(self.repository.root), params.get("device", "/dev/ttyAMA0"))
+                self.hardware = self._create_hardware(str(self.repository.root), mode, params.get("device", "/dev/ttyAMA0"))
                 self.playback.hardware = self.hardware
                 self.hardware_mode = mode
             self.hardware.connect()
@@ -60,7 +77,8 @@ class Agent:
             self.hardware.disconnect()
             return self.hardware.status()
         if method == "read_pose":
-            return {"servos": self.hardware.read_pose()}
+            servos = self.hardware.read_pose()
+            return {"servos": servos, "unavailable": [index + 1 for index, value in enumerate(servos) if value is None]}
         if method == "read_head_pose":
             return {"servos": self.hardware.read_pwm_pose([1, 2])}
         if method == "set_servo":
