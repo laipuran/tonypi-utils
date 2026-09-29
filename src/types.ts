@@ -9,6 +9,13 @@ export type RobotPose = {
   unavailable: number[];
 };
 
+export type TorqueResult = {
+  enabled: boolean;
+  requested: number[];
+  states: Array<{ id: number; enabled: boolean | null; raw: number | null }>;
+  unavailable: number[];
+};
+
 export type ActionGroupDocument = {
   name: string;
   servo_count: number;

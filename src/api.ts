@@ -1,4 +1,4 @@
-import type { Action, ActionGroupDocument, AgentStatus, GroupMeta, RobotPose } from "./types";
+import type { Action, ActionGroupDocument, AgentStatus, GroupMeta, RobotPose, TorqueResult } from "./types";
 
 export type AgentSettings = {
   url: string;
@@ -78,7 +78,7 @@ export const api = {
   setPose: (positions: { id: number; pulse: number }[], timeMs = 100) =>
     agentCall<{ count: number }>("set_pose", { positions, time_ms: timeMs }),
   stopHardware: () => agentCall<{ stopped: boolean }>("stop_hardware"),
-  setTorque: (ids: number[], enabled: boolean) => agentCall("set_torque", { ids, enabled }),
+  setTorque: (ids: number[], enabled: boolean) => agentCall<TorqueResult>("set_torque", { ids, enabled }),
   play: (actions: Action[], loop: boolean) => agentCall("playback_start", { actions, loop }),
   stopPlayback: () => agentCall("playback_stop"),
 };

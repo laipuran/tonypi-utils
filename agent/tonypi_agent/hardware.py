@@ -73,12 +73,15 @@ class MockHardware:
     def stop(self, _ids: list[int] | None = None) -> None:
         self._require_connected()
 
-    def set_torque(self, servo_ids: list[int], enabled: bool) -> None:
+    def set_torque(self, servo_ids: list[int], enabled: bool) -> dict[str, Any]:
         self._require_connected()
+        states: list[dict[str, Any]] = []
         for servo_id in servo_ids:
             if not 1 <= servo_id <= self.servo_count:
                 raise HardwareError(f"舵机编号超出范围：{servo_id}")
             self.torque_enabled[servo_id - 1] = enabled
+            states.append({"id": servo_id, "enabled": enabled, "raw": int(enabled)})
+        return {"enabled": enabled, "requested": servo_ids, "states": states, "unavailable": []}
 
     def _require_connected(self) -> None:
         if not self.connected:
@@ -213,15 +216,42 @@ class SerialHardware:
             if available_ids:
                 self._require_board().bus_servo_stop(available_ids)
 
-    def set_torque(self, servo_ids: list[int], enabled: bool) -> None:
+    def set_torque(self, servo_ids: list[int], enabled: bool) -> dict[str, Any]:
         with self._lock:
             board = self._require_board()
+            unavailable: list[int] = []
+            available_ids: list[int] = []
             for servo_id in servo_ids:
                 if not 1 <= servo_id <= self.servo_count:
                     raise HardwareError(f"舵机编号超出范围：{servo_id}")
                 if servo_id > PHYSICAL_BUS_SERVO_COUNT:
+                    unavailable.append(servo_id)
                     continue
-                board.bus_servo_enable_torque(servo_id, enabled)
+                available_ids.append(servo_id)
+
+                # The TonyPi board SDK has inverted semantics here:
+                # enable=True sends the board's unload command (0x0B),
+                # while enable=False sends the load command (0x0C).
+                board.bus_servo_enable_torque(servo_id, not enabled)
+
+            states: list[dict[str, Any]] = []
+            for servo_id in available_ids:
+                try:
+                    result = board.bus_servo_read_torque_state(servo_id)
+                    raw = int(result[0]) if result else None
+                    states.append({
+                        "id": servo_id,
+                        "enabled": None if raw is None else raw == 1,
+                        "raw": raw,
+                    })
+                except Exception:
+                    states.append({"id": servo_id, "enabled": None, "raw": None})
+            return {
+                "enabled": enabled,
+                "requested": servo_ids,
+                "states": states,
+                "unavailable": unavailable,
+            }
 
     def _validate(self, servo_id: int, pulse: int) -> None:
         if not 1 <= servo_id <= self.servo_count:

@@ -22,6 +22,7 @@ class FakeBoard:
         self.reception = []
         self.positions = []
         self.torque = []
+        self.torque_states = {}
         self.stops = []
 
     def enable_reception(self, enabled):
@@ -38,6 +39,10 @@ class FakeBoard:
 
     def bus_servo_enable_torque(self, servo_id, enabled):
         self.torque.append((servo_id, enabled))
+        self.torque_states[servo_id] = 0 if enabled else 1
+
+    def bus_servo_read_torque_state(self, servo_id):
+        return [self.torque_states.get(servo_id, 1)]
 
     def pwm_servo_read_position(self, servo_id):
         return 1500 if servo_id == 1 else 1435
@@ -61,9 +66,10 @@ class SerialHardwareAdapterTests(unittest.TestCase):
         self.assertEqual(hardware.read_pwm_pose([1, 2]), [1500, 1435])
         self.assertEqual(hardware.read_pose(), [500] * 16 + [None, None])
         hardware.stop([1, 2])
-        hardware.set_torque([1], False)
+        result = hardware.set_torque([1], False)
         self.assertEqual(board.stops, [[1, 2]])
-        self.assertEqual(board.torque, [(1, False)])
+        self.assertEqual(board.torque, [(1, True)])
+        self.assertEqual(result["states"], [{"id": 1, "enabled": False, "raw": 0}])
         hardware.disconnect()
         self.assertEqual(board.reception, [True, False])
         self.assertTrue(board.port.closed)

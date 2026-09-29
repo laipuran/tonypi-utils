@@ -256,8 +256,19 @@ export default function App() {
   const releaseTorque = async () => {
     if (!window.confirm("释放全部舵机力矩后，机器人可能会失去支撑。确定继续吗？")) return;
     try {
-      await api.setTorque(Array.from({ length: SERVO_COUNT }, (_, index) => index + 1), false);
-      showMessage("已释放全部舵机力矩");
+      const result = await api.setTorque(Array.from({ length: SERVO_COUNT }, (_, index) => index + 1), false);
+      const failed = result.states.filter((state) => state.enabled === true).map((state) => state.id);
+      const unknown = result.states.filter((state) => state.enabled == null).map((state) => state.id);
+      const unavailable = result.unavailable;
+      if (failed.length) {
+        showMessage(`释放完成但仍有力矩：舵机 ${failed.join("、")}${unavailable.length ? `；跳过 ${unavailable.join("、")}` : ""}`);
+      } else if (unknown.length) {
+        showMessage(`已发送释放命令，但无法确认舵机 ${unknown.join("、")} 的状态${unavailable.length ? `；跳过 ${unavailable.join("、")}` : ""}`);
+      } else if (unavailable.length) {
+        showMessage(`已释放 1–16 号舵机力矩，跳过 ${unavailable.join("、")}`);
+      } else {
+        showMessage("已释放全部总线舵机力矩");
+      }
     } catch (error) {
       showMessage(`释放力矩失败：${String(error)}`);
     }

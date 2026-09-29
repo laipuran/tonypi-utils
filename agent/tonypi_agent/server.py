@@ -84,8 +84,7 @@ class Agent:
             return {"stopped": True}
         if method == "set_torque":
             ids = [int(value) for value in params.get("ids", range(1, DEFAULT_SERVO_COUNT + 1))]
-            self.hardware.set_torque(ids, bool(params["enabled"]))
-            return {"enabled": bool(params["enabled"]), "ids": ids}
+            return self.hardware.set_torque(ids, bool(params["enabled"]))
         if method == "playback_start":
             if not self.hardware.status()["connected"]:
                 raise HardwareError("请先连接硬件，再播放动作组")
