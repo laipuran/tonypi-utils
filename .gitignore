@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# JavaScript dependencies and build output
+node_modules/
+dist/
+
+# Rust/Tauri build output
+src-tauri/target/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
