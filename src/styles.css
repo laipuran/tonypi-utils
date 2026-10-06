@@ -103,7 +103,7 @@ input[type="range"] { accent-color: #d8ff51; width: 100%; }
 .group-item-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .group-item-copy small { color: #6f8292; font-size: 10px; }
 .chevron { margin-left: auto; color: #687a89; font-size: 18px; }
-.group-actions { display: flex; gap: 6px; padding: 13px 16px 0; border-top: 1px solid #263440; margin-top: 9px; }
+.group-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 13px 16px 0; border-top: 1px solid #263440; margin-top: 9px; }
 .playback-box { margin: 14px 16px 0; padding: 12px; border: 1px solid #2f404d; border-radius: 7px; background: #0d151c; }
 .playback-title { display: flex; align-items: center; gap: 7px; color: #a7b5c1; font-size: 11px; margin-bottom: 10px; }
 .playback-actions { display: flex; gap: 5px; }

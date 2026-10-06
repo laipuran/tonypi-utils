@@ -9,12 +9,13 @@ type Props = {
   onLoad: () => void;
   onDelete: () => void;
   onMerge: () => void;
+  onMirror: () => void;
   onPlay: (loop: boolean) => void;
   onStop: () => void;
   playing: boolean;
 };
 
-export function GroupPanel({ groups, selected, groupName, onSelect, onNameChange, onLoad, onDelete, onMerge, onPlay, onStop, playing }: Props) {
+export function GroupPanel({ groups, selected, groupName, onSelect, onNameChange, onLoad, onDelete, onMerge, onMirror, onPlay, onStop, playing }: Props) {
   return (
     <section className="group-panel panel-card">
       <div className="panel-heading">
@@ -39,6 +40,7 @@ export function GroupPanel({ groups, selected, groupName, onSelect, onNameChange
       <div className="group-actions">
         <button className="small-button accent" onClick={onLoad}>打开动作组</button>
         <button className="small-button" onClick={onMerge}>合并</button>
+        <button className="small-button" onClick={onMirror}>镜像动作组</button>
         <button className="small-button danger-outline" onClick={onDelete}>删除文件</button>
       </div>
       <div className="playback-box">

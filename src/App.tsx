@@ -6,6 +6,7 @@ import { ServoPanel } from "./features/servo/ServoPanel";
 import { blankAction, DEFAULT_STAND_ACTION, HEAD_SERVO_DEFAULTS, SERVO_COUNT, type Action, type ActionGroupDocument, type AgentStatus, type GroupMeta } from "./types";
 import { Toolbar } from "./components/Toolbar";
 import { HeadPanel } from "./features/head/HeadPanel";
+import { mirrorActionGroup } from "./actionMirror";
 import "./styles.css";
 
 function makeDocument(name = "", template: Action = DEFAULT_STAND_ACTION): ActionGroupDocument {
@@ -323,6 +324,17 @@ export default function App() {
     }
   };
 
+  const mirrorGroup = () => {
+    if (!document.actions.length) {
+      showMessage("当前动作组没有可镜像的动作");
+      return;
+    }
+    if (!window.confirm("将镜像当前动作组中的全部动作，并覆盖当前编辑内容。确定继续吗？")) return;
+    setDocument((current) => mirrorActionGroup(current));
+    setDirty(true);
+    showMessage("已镜像整个动作组，请保存以写入文件");
+  };
+
   const updateAgent = async () => {
     const url = window.prompt("Agent HTTP 地址", agentSettings.url) ?? agentSettings.url;
     if (!/^https?:\/\/[^\s/]+(?::\d+)?(?:\/[^\s]*)?$/.test(url)) {
@@ -369,7 +381,7 @@ export default function App() {
           <div className="hint-bar"><span className="hint-icon">i</span><span>动作值范围 0–1000 · 动作时间 20–9999 ms · 选中动作后可通过左侧滑块实时调整</span><button className="link-button" onClick={updateAgent}>Agent 设置</button></div>
         </section>
         <aside className="right-column">
-          <GroupPanel groups={groups} selected={selectedGroup} groupName={groupName} onSelect={setSelectedGroup} onNameChange={setGroupName} onLoad={() => loadGroup()} onDelete={removeGroup} onMerge={mergeGroups} onPlay={startPlayback} onStop={stopPlayback} playing={isPlaying} />
+          <GroupPanel groups={groups} selected={selectedGroup} groupName={groupName} onSelect={setSelectedGroup} onNameChange={setGroupName} onLoad={() => loadGroup()} onDelete={removeGroup} onMerge={mergeGroups} onMirror={mirrorGroup} onPlay={startPlayback} onStop={stopPlayback} playing={isPlaying} />
           <section className="status-card panel-card">
             <div className="panel-heading compact"><div><span className="eyebrow">SYSTEM</span><h2>运行状态</h2></div></div>
             <div className="status-row"><span>Agent</span><strong className={status ? "status-good" : "status-bad"}>{status ? "在线" : "离线"}</strong></div>
