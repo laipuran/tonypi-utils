@@ -21,7 +21,7 @@ class MockHardware:
     def __init__(self, servo_count: int = 18, initial_pose: list[int] | None = None):
         self.servo_count = servo_count
         self.pose = list(initial_pose or DEFAULT_STAND_POSE[:servo_count])
-        self.pwm_pose = [1500, 1435, 1500, 1500]
+        self.pwm_pose = [1500, 1500, 1500, 1500]
         self.connected = False
         self.torque_enabled = [True] * servo_count
 

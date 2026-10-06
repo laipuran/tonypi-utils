@@ -50,7 +50,7 @@ export type AgentStatus = {
 };
 
 export const SERVO_COUNT = 18;
-export const HEAD_SERVO_DEFAULTS = [1500, 1435];
+export const HEAD_SERVO_DEFAULTS = [1500, 1500];
 export const DEFAULT_STAND_ACTION: Action = {
   index: 1,
   time: 500,

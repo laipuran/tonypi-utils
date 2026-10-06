@@ -47,7 +47,7 @@ class ActionGroupRepositoryTests(unittest.TestCase):
             agent.dispatch("set_servo", {"id": 1, "pulse": 620, "time_ms": 100})
             agent.dispatch("set_head_servo", {"id": 1, "pulse": 1600, "time_ms": 200})
             self.assertEqual(agent.dispatch("read_pose", {})["servos"][0], 620)
-            self.assertEqual(agent.dispatch("read_head_pose", {})["servos"], [1600, 1435])
+            self.assertEqual(agent.dispatch("read_head_pose", {})["servos"], [1600, 1500])
 
 
 if __name__ == "__main__":
